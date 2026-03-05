@@ -49,7 +49,7 @@ import {
   Legend
 } from 'recharts';
 import { User, Resident, ActivityLog, DashboardStats, VillageInfo } from './types.ts';
-import { apiService } from './services/apiService';
+import { apiService, IS_GAS } from './services/apiService';
 
 // Utility for tailwind classes
 function cn(...inputs: ClassValue[]) {
@@ -131,6 +131,7 @@ export default function App() {
   }, []);
 
   const fetchData = async (token: string, type: string) => {
+    if (!token) return;
     setIsLoading(true);
     try {
       let res;
@@ -138,20 +139,6 @@ export default function App() {
         res = await apiService.getStats(token);
         if (res.status === 'success') {
           setStats(res.data);
-        } else if (!token) {
-          setStats({
-            totalPenduduk: 0,
-            totalLakiLaki: 0,
-            totalPerempuan: 0,
-            totalUsers: 0,
-            totalKK: 0,
-            totalKKLakiLaki: 0,
-            totalKKPerempuan: 0,
-            recentLogs: [],
-            genderData: [],
-            ageData: [],
-            dusunData: []
-          });
         }
       } else if (type === 'residents' || ['bpd', 'rt', 'rw', 'pkk', 'karang_taruna', 'lpmd', 'linmas', 'village_officials'].includes(type)) {
         res = await apiService.getResidents(token);
@@ -166,8 +153,13 @@ export default function App() {
         res = await apiService.getVillageInfo(token);
         if (res.status === 'success') setVillageInfo(res.data);
       }
-    } catch (error) {
+
+      if (res && res.status === 'error') {
+        showNotification(res.message, 'error');
+      }
+    } catch (error: any) {
       console.error('Fetch error:', error);
+      showNotification('Gagal mengambil data: ' + error.message, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -430,6 +422,17 @@ export default function App() {
               <LogOut className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
               {sidebarOpen && <span className="font-medium">Keluar</span>}
             </button>
+          )}
+          
+          {sidebarOpen && (
+            <div className="mt-4 px-4 py-2 bg-slate-800/50 rounded-lg border border-slate-700/50">
+              <div className="flex items-center gap-2">
+                <div className={cn("w-2 h-2 rounded-full", IS_GAS ? "bg-amber-500" : "bg-emerald-500")}></div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  Mode: {IS_GAS ? "Google Sheets" : "Local Server"}
+                </span>
+              </div>
+            </div>
           )}
         </div>
       </aside>

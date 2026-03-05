@@ -3,31 +3,39 @@
  * Handles communication with either local Express backend or Google Apps Script
  */
 
-const IS_GAS = (import.meta as any).env.VITE_USE_GAS === 'true';
-const GAS_URL = (import.meta as any).env.VITE_GAS_URL || '';
+export const IS_GAS = (import.meta as any).env.VITE_USE_GAS === 'true';
+export const GAS_URL = (import.meta as any).env.VITE_GAS_URL || '';
 
 async function request(action: string, data?: any, token?: string) {
   if (IS_GAS) {
-    if (!GAS_URL) {
-      console.error('GAS_URL is not defined in environment variables');
-      return { status: 'error', message: 'Konfigurasi Google Apps Script belum lengkap.' };
+    if (!GAS_URL || GAS_URL.includes('YOUR_GAS_DEPLOYMENT_ID')) {
+      console.error('GAS_URL is not configured correctly. Please update VITE_GAS_URL in your environment variables.');
+      return { 
+        status: 'error', 
+        message: 'Konfigurasi Google Apps Script belum lengkap. Pastikan VITE_GAS_URL sudah diatur dengan ID Deployment yang benar di panel Secrets.' 
+      };
     }
 
     try {
       const response = await fetch(GAS_URL, {
         method: 'POST',
         mode: 'cors',
+        redirect: 'follow',
         headers: {
-          'Content-Type': 'text/plain;charset=utf-8', // GAS requires this for POST from browser
+          'Content-Type': 'text/plain;charset=utf-8',
         },
         body: JSON.stringify({ action, data, token })
       });
       
-      if (!response.ok) throw new Error('Network response was not ok');
-      return await response.json();
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const result = await response.json();
+      return result;
     } catch (error: any) {
       console.error('GAS Request Error:', error);
-      return { status: 'error', message: 'Gagal terhubung ke Google Sheets: ' + error.message };
+      return { 
+        status: 'error', 
+        message: 'Gagal terhubung ke Google Sheets. Pastikan Script sudah di-deploy sebagai "Anyone" dan URL sudah benar. Error: ' + error.message 
+      };
     }
   } else {
     // Local Express API
